@@ -86,6 +86,16 @@ input::placeholder,textarea::placeholder{color:var(--muted);opacity:.75}
 .alert.down{background:var(--down-soft)} .alert.down i{color:var(--down)}
 .alert.eq{background:var(--gold-soft)} .alert.eq i{color:var(--gold)}
 .alerts{display:flex;flex-direction:column;gap:6px}
+.remind{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:var(--gold-soft);border-radius:var(--r);padding:12px 14px}
+.remind p{flex:1 1 200px;font-size:.9rem;color:var(--ink)}
+.remind .btn{background:var(--surface);color:var(--gold)}
+.bk{display:flex;flex-direction:column;gap:10px}
+.bk-status{display:flex;align-items:center;gap:10px;font-size:.9rem}
+.bk-status i{flex:none;width:10px;height:10px;border-radius:50%;background:var(--up)}
+.bk-status i.late{background:var(--gold)}
+.file-btn{position:relative;overflow:hidden;display:block}
+.file-btn input{position:absolute;inset:0;opacity:0;cursor:pointer;font-size:0}
+.confirm{background:var(--accent-soft);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;gap:10px}
 .cnts{display:inline-flex;gap:8px;font-size:.82rem;font-weight:600;font-variant-numeric:tabular-nums}
 .cnt.up{color:var(--up)} .cnt.eq{color:var(--muted)} .cnt.down{color:var(--down)} .cnt.rec{color:var(--gold)}
 
@@ -349,6 +359,44 @@ function load(){
 var S = load();
 function save(){ try { localStorage.setItem(KEY, JSON.stringify(S)); storageOK = true; } catch(e){ storageOK = false; } }
 var saveTimer = null;
+var pendingRestore = null;
+try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(function(){}); } catch(e){}
+function backupAge(){ if (!S.lastBackup) return null; var t = Date.parse(S.lastBackup); return isFinite(t) ? Math.floor((Date.now()-t)/864e5) : null; }
+function backupLate(){ var a = backupAge(); return S.sessions.length > 0 && (a === null || a >= 7); }
+function backupLabel(){ var a = backupAge(); if (a === null) return "Aucune sauvegarde pour l'instant"; if (a === 0) return "Dernière sauvegarde aujourd'hui"; if (a === 1) return "Dernière sauvegarde hier"; return "Dernière sauvegarde il y a "+a+" jours"; }
+function backupData(){ return JSON.stringify({app:"Suivi sport la machine", version:2, exportedAt:new Date().toISOString(), sessions:S.sessions, pbs:S.pbs||[]}); }
+function markBackup(){ S.lastBackup = new Date().toISOString(); save(); }
+var inFrame = (function(){ try { return window.self !== window.top; } catch(e){ return true; } })();
+function downloadBlob(blob, name){
+  if (inFrame){ toast("Dans cette version, utilise « Copier la sauvegarde » dans Autres options."); var dt = document.getElementById("bkDetails"); if (dt) dt.open = true; return; }
+  try {
+    var url = URL.createObjectURL(blob), a = document.createElement("a");
+    a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+    markBackup(); rerender(); toast("Fichier de sauvegarde enregistré");
+  } catch(e){ toast("Sauvegarde impossible ici : utilise « Copier la sauvegarde »."); }
+}
+function doBackup(){
+  var name = "Sauvegarde la machine "+today()+".json", txt = backupData();
+  var blob = new Blob([txt], {type:"application/json"}), file = null;
+  try { file = new File([txt], name, {type:"application/json"}); } catch(e){}
+  var can = false; try { can = !!(file && navigator.canShare && navigator.canShare({files:[file]})); } catch(e){}
+  if (can){
+    navigator.share({files:[file], title:"Sauvegarde la machine"}).then(function(){ markBackup(); rerender(); toast("Sauvegarde enregistrée"); },
+      function(err){ if (err && err.name === "AbortError") return; downloadBlob(blob, name); });
+    return;
+  }
+  downloadBlob(blob, name);
+}
+function parseBackup(raw){
+  var data; try { data = JSON.parse(raw); } catch(e){ return null; }
+  if (!data || !Array.isArray(data.sessions)) return null;
+  return data;
+}
+function applyRestore(data){
+  S = {sessions:data.sessions, pbs:Array.isArray(data.pbs) ? data.pbs : (S.pbs||[]), draft:null, lastBackup:S.lastBackup};
+  save(); pendingRestore = null; go("home"); toast("Sauvegarde restaurée : "+S.sessions.length+" séance"+(S.sessions.length>1?"s":""));
+}
 function saveSoon(){ clearTimeout(saveTimer); saveTimer = setTimeout(save, 300); }
 save();
 
@@ -537,6 +585,7 @@ function vHome(){
   var ym = today().slice(0,7), month = S.sessions.filter(function(s){ return s.date.slice(0,7) === ym; }).length, thisWeek = ws[iso(mon)] || 0, st = streak();
   var h = '<div class="wrap">';
   h += '<header class="row" style="gap:14px;align-items:center"><img src="'+LOGO+'" alt="" width="56" height="56" style="border-radius:14px;flex:none"><div class="section" style="gap:4px"><span class="eyebrow">'+esc(fmtDate(today()))+'</span><h1>Suivi sport <em>la machine</em></h1></div></header>';
+  if (backupLate()) h += '<div class="remind"><p><strong>'+esc(backupLabel())+'.</strong> Une copie dans iCloud protège tes séances si le téléphone est changé ou effacé.</p><button class="btn sm" data-act="backup">Sauvegarder</button></div>';
   h += '<section class="section"><span class="eyebrow">Cette semaine</span><div class="week">'+week+'</div></section>';
   h += '<section class="stats"><div class="stat"><b>'+thisWeek+'</b><span>séance'+(thisWeek>1?"s":"")+' cette semaine</span></div><div class="stat"><b>'+month+'</b><span>séance'+(month>1?"s":"")+' ce mois-ci</span></div><div class="stat"><b>'+st+'</b><span>semaine'+(st>1?"s":"")+' d\'affilée</span></div></section>';
   h += '<section class="section"><span class="eyebrow">Commencer une séance</span><div class="list">';
@@ -901,12 +950,24 @@ function vSettings(){
     '<p>À l\'enregistrement, un exercice qui dépasse son PB le remplace automatiquement. Dans le journal, « Définir comme PB » permet aussi de choisir soi-même. Il n\'y a pas de PB pour le cardio et les abdos.</p>'+
     '<p>Pour le cardio : à durée égale on compare les kcal, sinon les kcal par minute.</p>'+
     '<p>Une alerte ⚠ apparaît quand un exercice fait mieux 2 séances d\'affilée, moins bien 2 séances d\'affilée, ou pareil 3 séances d\'affilée (hors cardio et abdos).</p></section>';
-  var json = JSON.stringify({sessions:S.sessions, pbs:S.pbs});
-  h += '<section class="section"><h2>Sauvegarde</h2><p class="muted small">Les séances sont enregistrées sur ce téléphone, dans ce navigateur. De temps en temps, copie la sauvegarde et colle-la dans tes notes pour ne rien perdre.</p>'+
-    '<button class="btn primary" data-act="copy">Copier la sauvegarde</button>'+
-    '<details id="bkDetails"><summary>Afficher le texte de sauvegarde</summary><textarea id="bkText" readonly>'+esc(json)+'</textarea></details>'+
-    '<label class="field" for="restoreTxt">Restaurer une sauvegarde<textarea id="restoreTxt" placeholder="Colle ici le texte copié"></textarea></label>'+
-    '<button class="btn" data-act="restore">'+(confirmKey === "restore" ? "Touche encore : les données actuelles seront remplacées" : "Restaurer")+'</button></section>';
+  var json = backupData();
+  h += '<section class="section bk"><h2>Sauvegarde</h2>'+
+    '<p class="bk-status"><i class="'+(backupLate()?"late":"")+'"></i><span>'+esc(backupLabel())+'</span></p>'+
+    '<p class="muted small">Les séances sont enregistrées sur ce téléphone. « Sauvegarder » crée un fichier : choisis « Enregistrer dans Fichiers » puis iCloud Drive, ou envoie-le toi par mail. Un rappel apparaît sur l\'accueil au bout de 7 jours sans sauvegarde.</p>'+
+    '<button class="btn primary" data-act="backup">Sauvegarder</button>';
+  if (pendingRestore){
+    var pr = pendingRestore, when = pr.exportedAt ? new Date(pr.exportedAt).toLocaleDateString("fr-FR",{day:"numeric",month:"long",year:"numeric"}) : "";
+    h += '<div class="confirm"><p><strong>Remplacer les données actuelles ?</strong><br>Sauvegarde'+(when ? ' du '+esc(when) : '')+' : '+pr.sessions.length+' séance'+(pr.sessions.length>1?"s":"")+'. Les '+S.sessions.length+' séances actuelles seront remplacées.</p>'+
+      '<div class="row"><button class="btn primary" data-act="restore-ok" style="flex:1">Restaurer</button><button class="btn" data-act="restore-cancel" style="flex:1">Annuler</button></div></div>';
+  } else {
+    h += '<label class="btn file-btn" for="restoreFile">Restaurer depuis un fichier<input id="restoreFile" type="file" accept=".json,application/json,text/plain"></label>';
+  }
+  h += '<details id="bkDetails"><summary>Autres options</summary><div class="section" style="margin-top:10px">'+
+    '<button class="btn" data-act="copy">Copier la sauvegarde</button>'+
+    '<textarea id="bkText" readonly>'+esc(json)+'</textarea>'+
+    '<label class="field" for="restoreTxt">Restaurer depuis un texte copié<textarea id="restoreTxt" placeholder="Colle ici le texte copié"></textarea></label>'+
+    '<button class="btn" data-act="restore">'+(confirmKey === "restore" ? "Touche encore : les données actuelles seront remplacées" : "Restaurer")+'</button></div></details>'+
+    '<p class="muted small">Astuce : ajoute l\'appli à l\'écran d\'accueil (Partager puis « Sur l\'écran d\'accueil »). Sinon, Safari peut effacer les données d\'un site non ouvert depuis 7 jours.</p></section>';
   return h+'</div>';
 }
 function empty(msg){ return '<div class="card empty"><p class="muted">'+esc(msg)+'</p><button class="btn primary" data-act="go" data-v="home">Commencer une séance</button></div>'; }
@@ -957,7 +1018,7 @@ document.addEventListener("click", function(ev){
   var a = b.dataset.act, d = S.draft, i = b.dataset.i != null ? +b.dataset.i : -1;
   prevKey = confirmKey; confirmKey = null;
   switch (a){
-    case "go": go(b.dataset.v); break;
+    case "go": pendingRestore = null; go(b.dataset.v); break;
     case "resume": go("edit"); break;
     case "start": if (S.draft) confirmOr("start-"+b.dataset.t, function(){ start(b.dataset.t); }); else start(b.dataset.t); break;
     case "close-edit": save(); go("home"); break;
@@ -1002,6 +1063,9 @@ document.addEventListener("click", function(ev){
       S.draft = toDraft(se); var c2 = dctx(); S.draft.items.forEach(function(x){ applyPh(x, c2); }); save(); go("edit"); break;
     case "del": var id = b.dataset.id; confirmOr("del-"+id, function(){ S.sessions = S.sessions.filter(function(x){ return x.id !== id; }); save(); go("journal"); toast("Séance supprimée"); }); break;
     case "prog": progEx = b.dataset.name; rerender(); break;
+    case "backup": doBackup(); break;
+    case "restore-ok": if (pendingRestore) applyRestore(pendingRestore); break;
+    case "restore-cancel": pendingRestore = null; rerender(); break;
     case "set-pb":
       var sid = b.dataset.sid, iid = b.dataset.iid;
       confirmOr("set-pb-"+iid, function(){
@@ -1014,13 +1078,13 @@ document.addEventListener("click", function(ev){
     case "copy":
       var txt = $("#bkText").value;
       var fb = function(){ var dt = $("#bkDetails"); dt.open = true; var ta = $("#bkText"); ta.focus(); ta.select(); toast("Sélectionne le texte et copie-le"); };
-      try { navigator.clipboard.writeText(txt).then(function(){ toast("Sauvegarde copiée"); }, fb); } catch(err){ fb(); }
+      try { navigator.clipboard.writeText(txt).then(function(){ markBackup(); toast("Sauvegarde copiée"); }, fb); } catch(err){ fb(); }
       break;
     case "restore":
       var raw = $("#restoreTxt").value.trim(); if (!raw){ toast("Colle d'abord le texte de sauvegarde."); break; }
       var data; try { data = JSON.parse(raw); } catch(err){ toast("Ce texte n'est pas une sauvegarde valide."); break; }
       if (!data || !Array.isArray(data.sessions)){ toast("Ce texte n'est pas une sauvegarde valide."); break; }
-      confirmOr("restore", function(){ S = {sessions:data.sessions, pbs:Array.isArray(data.pbs) ? data.pbs : (S.pbs||[]), draft:null}; save(); go("home"); toast("Sauvegarde restaurée"); });
+      confirmOr("restore", function(){ applyRestore(data); });
       var rt = $("#restoreTxt"); if (rt) rt.value = raw;
       break;
   }
@@ -1031,6 +1095,13 @@ app.addEventListener("input", function(ev){
   else if (t.dataset.if){ d.items[+t.dataset.i][t.dataset.if] = t.value; if (t.dataset.if !== "note" && t.dataset.if !== "reglage") live(+t.dataset.i); }
   else if (t.dataset.k){ var s = d.items[+t.dataset.i].sets[+t.dataset.j], o = t.dataset.side === "all" ? s : s[t.dataset.side]; o[t.dataset.k] = t.value; live(+t.dataset.i); }
   saveSoon();
+});
+document.addEventListener("change", function(ev){
+  var t = ev.target; if (t.id !== "restoreFile" || !t.files || !t.files[0]) return;
+  var fr = new FileReader();
+  fr.onload = function(){ var data = parseBackup(String(fr.result||"")); if (!data){ toast("Ce fichier n'est pas une sauvegarde valide."); return; } pendingRestore = data; rerender(); };
+  fr.onerror = function(){ toast("Impossible de lire ce fichier."); };
+  fr.readAsText(t.files[0]);
 });
 app.addEventListener("change", function(ev){
   var t = ev.target, d = S.draft; if (!d) return;
