@@ -328,28 +328,8 @@ function seed(){
       leU = [[22.5,10],[22.5,10],[25,10,"-"],[25,10,"-"]], lcaU = [[20,10],[22.5,10,"-"],[25,8,"-"]], lccU = [[15,8,"-"],[12.5,10],[15,8,"-"],[12.5,10]];
   function P(name,mode,reg,sets,note){ return {id:uid(), name:name, mode:mode, reglage:reg||"", sets:sets, date:null, sessionId:null, itemId:null, note:note||""}; }
   var lca = [[20,10],[22.5,10],[25,8],[25,8]], c1 = [[60,10],[70,10],[60,10],[70,8]], c2 = [[40,10],[50,10],[60,10],[70,10]];
-  var pbs = [
-    P("Leg extension","bi","",B([[50,10],[50,10],[52.5,10],[52.5,10]])),
-    P("Leg curl couché","bi","",B([[22.5,10],[25,10],[27.5,8,"-"],[27.5,8,"-"]])),
-    P("Leg curl assis","uni","",U(lca,lca)),
-    P("Leg press","bi","1, pieds à 5, deep",B([[100,10],[110,10],[120,10],[130,10],[140,10]]),"5e série en bonus"),
-    P("Deep calf raise","uni","",U(c1,c1)),
-    P("Deep calf raise","bi","4-5-6",B([[100,10],[110,10],[120,10],[130,10]])),
-    P("Deep calf raise","uni","4-5-6",U(c2,c2)),
-    P("Machine abducteur","bi","",B([[55,10],[60,10],[65,10],[70,10],[75,10],[80,10]]),"Bonus à 75 kg puis 80 kg"),
-    P("Machine adducteur","bi","",B([[55,10],[60,8],[60,8],[60,8]])),
-    P("Arm curl","uni","",U([[27.5,10],[27.5,10],[27.5,10],[30,8,"-"]],[[12.5,10],[15,10],[17.5,10],[20,10]])),
-    P("Delt raise","bi","",B([[15,10,"+"],[17.5,10],[20,10],[22.5,10],[25,8]]),"5e série en bonus"),
-    P("Shoulder press","uni","",U([[20,10],[22.5,7],[25,8],[27.5,8]],[[15,10],[17.5,10],[20,10],[22.5,10]])),
-    P("Chest press","bi","",B([[37.5,10],[37.5,10],[40,10],[42.5,10]])),
-    P("Pectoral machine","bi","",B([[22.5,10],[25,10],[27.5,10],[30,10]])),
-    P("Pulldown machine","bi","",B([[37.5,10],[37.5,10],[40,10],[42.5,10]]),"4e série en alterné"),
-    P("Lower back machine","bi","2-2, repose-pied éloigné",B([[60,10],[62.5,10],[65,10],[67.5,10]])),
-    P("Lower back machine","bi","deep",B([[37.5,10],[40,10],[42.5,10],[45,10]])),
-    P("Low row machine","uni","",U([[37.5,10],[40,10],[42.5,10],[45,10]],[[32.5,10],[35,10],[37.5,10],[40,10]])),
-    P("Lower back banc","bi","",B([[10,15],[20,10],[20,10],[20,10],[10,20]]),"Séries 2 à 4 contre le torse")
-  ];
-  return {draft:null, pbs:pbs, sessions:[
+  var pbs = pbList();
+  return {draft:null, pbs:pbs, pbsVersion:PB_VERSION, sessions:[
     {id:uid(), created:1, date:"2026-10-30", type:"dos", name:"Dos", feel:0, note:"", items:[
       C("Rameur",10,80,11,null,null,"milieu"),
       F("Pulldown machine","bi","2",B([[37.5,10],[37.5,10],[40,10],[42.5,10],[45,8]]),"4e série en alterné. Bonus à 45 kg : ×8 à gauche, ×5 à droite."),
@@ -389,14 +369,49 @@ function seed(){
     ]}
   ]};
 }
+var PB_VERSION = 2;
+function pbList(){
+  function S1(kg,reps,mark,aide){ var o = {kg:kg, reps:reps, mark:mark||""}; if (aide) o.aide = true; return o; }
+  function B(a){ return a.map(function(x){ return S1(x[0],x[1],x[2]); }); }
+  function U(g,d,aideD){ return g.map(function(x,i){ var y = d[i]; return {g:S1(x[0],x[1],x[2]), d:S1(y[0],y[1],y[2],aideD)}; }); }
+  function P(name,mode,reg,sets,note){ return {id:uid(), name:name, mode:mode, reglage:reg||"", sets:sets, date:null, sessionId:null, itemId:null, note:note||""}; }
+  var leU = [[22.5,10],[22.5,10],[25,10,"-"],[25,10,"-"]], lccU = [[12.5,10],[12.5,10],[15,8],[15,8]], lcaU = [[22.5,10],[22.5,10,"-"],[25,8],[25,8]];
+  var lpU = [[50,10],[60,10],[60,10],[70,10,"-"]], dcU = [[60,10],[60,10],[70,10],[80,10]];
+  return [
+    P("Leg extension","bi","",B([[50,10],[52.5,10],[55,10],[57.5,8]])),
+    P("Leg extension","uni","",U(leU,leU)),
+    P("Leg curl couché","bi","",B([[25,10],[25,8],[27.5,10],[27.5,8]])),
+    P("Leg curl couché","uni","",U(lccU,lccU)),
+    P("Leg curl assis","bi","",B([[35,10],[37.5,10],[37.5,10],[40,10]])),
+    P("Leg curl assis","uni","",U(lcaU,lcaU)),
+    P("Leg press","bi","1, pieds à 5, deep",B([[100,10],[110,10],[120,10],[130,10],[140,10]]),"5e série en bonus"),
+    P("Leg press","bi","deep, reps hautes",B([[60,20],[70,20],[70,20],[80,20]]),"Low volume high reps"),
+    P("Leg press","uni","deep",U(lpU,lpU)),
+    P("Deep calf raise","bi","4-5-6",B([[100,10],[110,10],[120,10],[130,10],[140,5]]),"5e série en bonus"),
+    P("Deep calf raise","uni","",U(dcU,dcU)),
+    P("Machine abducteur","bi","",B([[55,10],[60,10],[65,10],[70,10],[75,10],[80,10]]),"Bonus à 75 kg puis 80 kg"),
+    P("Machine adducteur","bi","",B([[55,10],[60,10],[65,10],[65,8]])),
+    P("Arm curl","uni","",U([[27.5,10],[27.5,10],[27.5,10],[30,8,"-"]],[[12.5,10],[15,10],[17.5,10],[20,8]])),
+    P("Arm curl","uni","",U([[27.5,10],[27.5,10],[30,8],[30,8,"-"]],[[12.5,10],[15,10],[17.5,10],[20,10]],true),"Bras droit avec aide"),
+    P("Delt raise","bi","",B([[20,10],[22.5,10],[25,10],[27.5,10]])),
+    P("Shoulder press","uni","",U([[20,10],[22.5,10],[25,10],[27.5,10]],[[17.5,10],[20,10],[22.5,10],[22.5,10]])),
+    P("Chest press","bi","",B([[37.5,10],[37.5,10],[40,10],[42.5,10]])),
+    P("Pectoral machine","bi","",B([[27.5,10],[27.5,10],[27.5,10],[30,10]])),
+    P("Pulldown machine","bi","2",B([[37.5,10],[37.5,10],[40,10],[42.5,10],[45,5]]),"4e série en alterné, 5e en bonus"),
+    P("Lower back machine","bi","2-2, repose-pied éloigné",B([[40,10],[40,10],[42.5,10],[45,10]])),
+    P("Lower back banc","bi","2, jambes contractées",B([[10,12],[10,12],[10,10],[10,10],[10,10]])),
+    P("Low row machine","uni","deep",U([[40,10],[40,10],[40,10],[42.5,10]],[[32.5,10],[35,10],[37.5,10],[40,10]]))
+  ];
+}
 function migrate(d){
   var ren = function(o){ if (o && norm(o.name) === "calf raise") o.name = "Deep calf raise"; };
   d.sessions.forEach(function(x){ (x.items||[]).forEach(ren); });
   d.pbs.forEach(ren);
   if (d.draft && d.draft.items) d.draft.items.forEach(ren);
+  if (d.pbsVersion !== PB_VERSION){ d.pbs = pbList(); d.pbsVersion = PB_VERSION; }
 }
 function load(){
-  try { var r = localStorage.getItem(KEY); if (r) { var d = JSON.parse(r); if (d && Array.isArray(d.sessions)) { if (!Array.isArray(d.pbs)) d.pbs = []; migrate(d); return d; } } }
+  try { var r = localStorage.getItem(KEY); if (r) { var d = JSON.parse(r); if (d && Array.isArray(d.sessions)) { if (!Array.isArray(d.pbs)) d.pbs = []; migrate(d); try { localStorage.setItem(KEY, JSON.stringify(d)); } catch(e){} return d; } } }
   catch(e){ storageOK = false; }
   return seed();
 }
@@ -408,7 +423,7 @@ try { if (navigator.storage && navigator.storage.persist) navigator.storage.pers
 function backupAge(){ if (!S.lastBackup) return null; var t = Date.parse(S.lastBackup); return isFinite(t) ? Math.floor((Date.now()-t)/864e5) : null; }
 function backupLate(){ var a = backupAge(); return S.sessions.length > 0 && (a === null || a >= 7); }
 function backupLabel(){ var a = backupAge(); if (a === null) return "Aucune sauvegarde pour l'instant"; if (a === 0) return "Dernière sauvegarde aujourd'hui"; if (a === 1) return "Dernière sauvegarde hier"; return "Dernière sauvegarde il y a "+a+" jours"; }
-function backupData(){ return JSON.stringify({app:"Suivi sport la machine", version:2, exportedAt:new Date().toISOString(), sessions:S.sessions, pbs:S.pbs||[]}); }
+function backupData(){ return JSON.stringify({app:"Suivi sport la machine", version:2, exportedAt:new Date().toISOString(), sessions:S.sessions, pbs:S.pbs||[], pbsVersion:PB_VERSION}); }
 function markBackup(){ S.lastBackup = new Date().toISOString(); save(); }
 var inFrame = (function(){ try { return window.self !== window.top; } catch(e){ return true; } })();
 function downloadBlob(blob, name){
@@ -438,7 +453,7 @@ function parseBackup(raw){
   return data;
 }
 function applyRestore(data){
-  S = {sessions:data.sessions, pbs:Array.isArray(data.pbs) ? data.pbs : (S.pbs||[]), draft:null, lastBackup:S.lastBackup};
+  S = {sessions:data.sessions, pbs:Array.isArray(data.pbs) ? data.pbs : (S.pbs||[]), pbsVersion:PB_VERSION, draft:null, lastBackup:S.lastBackup};
   save(); pendingRestore = null; go("home"); toast("Sauvegarde restaurée : "+S.sessions.length+" séance"+(S.sessions.length>1?"s":""));
 }
 function saveSoon(){ clearTimeout(saveTimer); saveTimer = setTimeout(save, 300); }
@@ -473,9 +488,11 @@ function stats(sets){ var vol = 0, reps = 0, best = null; sets.forEach(function(
 function verdict(cur, prev){ if (!(prev > 0) || !(cur > 0)) return null; var d = (cur-prev)/prev; return {v: d > 0.02 ? "up" : d < -0.02 ? "down" : "eq", d:d}; }
 function totVol(it){ return sidesOf(it).reduce(function(a,sd){ return a + stats(setsOf(it,sd)).vol; }, 0); }
 function pbTokens(t){ return norm(t).split(/[^a-z0-9]+/).filter(function(x){ return x && ["a","et","de","le","la","avec"].indexOf(x) < 0; }); }
+function hasAide(it){ return (it.sets||[]).some(function(x){ return x && x.d && x.d.aide && (x.d.reps !== "" && x.d.reps != null); }); }
 function getPB(item){
   if (item.kind !== "force" || noPB(item)) return null;
   var c = (S.pbs||[]).filter(function(p){ return norm(p.name) === norm(item.name) && p.mode === item.mode; });
+  if (item.mode === "uni" && aideAllowed(item, "d")){ var ia = hasAide(item), ca = c.filter(function(p){ return hasAide(p) === ia; }); if (ca.length || !ia) c = ca; }
   if (!c.length) return null;
   var kr = norm(item.reglage), ex = c.filter(function(p){ return norm(p.reglage) === kr; });
   if (ex.length) return ex[0];
@@ -680,10 +697,15 @@ function lastItemByName(name){
   for (var i=0;i<l.length;i++) for (var j=0;j<l[i].items.length;j++) if (norm(l[i].items[j].name) === norm(name)) return l[i].items[j];
   return null;
 }
+function defaultMode(name){
+  var m = null;
+  Object.keys(TPL).forEach(function(t){ TPL[t].forEach(function(x){ if (!m && x[0] === "f" && norm(x[1]) === norm(name)) m = x[2]; }); });
+  return m || "bi";
+}
 function newItem(kind, name, mode){
   var last = lastItemByName(name);
   if (kind === "cardio") return {id:uid(), kind:"cardio", name:name, reglage:last ? last.reglage||"" : "", min:last && last.min != null ? fmt(last.min) : "", kcal:"", level:last && last.level != null ? fmt(last.level) : "", speed:"", incline:"", note:""};
-  var m = mode || (last ? last.mode : "bi"); if (!uniAllowed(name)) m = "bi";
+  var m = mode || (last ? last.mode : defaultMode(name)); if (!uniAllowed(name)) m = "bi";
   var n = last && last.mode === m ? last.sets.length : 4, sets = [];
   for (var i=0;i<n;i++) sets.push(blankSet(m));
   return {id:uid(), kind:"force", name:name, mode:m, reglage:last && last.mode === m ? last.reglage||"" : "", note:"", sets:sets};
